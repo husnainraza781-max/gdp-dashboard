@@ -166,6 +166,14 @@
                 <span class="text-xs text-slate-300">Twist ϵ (deg)</span>
                 <input id="twist" type="number" step="0.5" value="-2" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
               </label>
+              <label class="block">
+                <span class="text-xs text-slate-300">Cruise Mach M</span>
+                <input id="wingMach" type="number" step="0.01" value="0.78" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-slate-300">Design Cℓ</span>
+                <input id="wingCL" type="number" step="0.05" value="0.5" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+              </label>
             </div>
             <button id="analyze3D" class="w-full mt-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Analyze 3D Wing</button>
             <div class="mt-4 text-sm grid grid-cols-2 gap-2">
@@ -569,22 +577,50 @@
       }
     }
 
+    function skinFrictionFlatPlate(Re, M){
+      // Cf turbulent flat plate (Schlichting/ITTC) with rough Mach adjustment
+      const ReEff = Math.max(1e5, Re);
+      const Cf = 0.455 / (Math.pow(Math.log10(ReEff), 2.58)) * (1 + 0.144*M*M) ** -0.65;
+      return Cf;
+    }
+
     function simulateAero(alphaDeg, mach, reynolds) {
-      const alphas = Array.from({length:21}, (_,i)=> -5 + i*1);
-      const alphaRad = alphas.map(a=> a*Math.PI/180);
-      // Thin airfoil linear region with compressibility correction (Prandtl-Glauert)
-      const beta = Math.sqrt(Math.max(1 - mach*mach, 0.1));
-      const clSlope = 2*Math.PI / beta;
-      const alpha0 = -2*Math.PI/180; // zero-lift angle
+      const alphas = Array.from({length:25}, (_,i)=> -5 + i*1);
+      const beta = Math.sqrt(Math.max(1 - mach*mach, 0.05));
+      // Camber/thickness influence (from input if NACA present)
+      const txt = ($('#airfoilInput').value||'NACA 2412').toUpperCase();
+      let m=0.02, p=0.4, t=0.12;
+      const mpt = txt.match(/NACA\s*(\d{4,5})/);
+      if (mpt){
+        const c = mpt[1];
+        if (c.length===4){ m = Number(c[0])/100; p = Number(c[1])/10; t = Number(c.slice(2))/100; }
+        if (c.length===5){ t = Number(c.slice(3))/100; m=0.03; p=0.15; }
+      }
+      const clAlphaBase = 2*Math.PI; // per rad
+      const clAlpha = clAlphaBase / beta * (1 - 0.12*t - 0.1*m);
+      const alpha0 = (-2*m + 0.1*t) * Math.PI/180 - 1.5*Math.PI/180; // shift
       const cls = alphas.map(a => {
-        // mild stall effect
-        const cl = clSlope * ((a*Math.PI/180) - alpha0);
-        const stall = 1 / (1 + Math.exp((Math.abs(a)-14)/1.5));
-        return cl * (0.7 + 0.3*stall);
+        const ar = a*Math.PI/180;
+        const clLinear = clAlpha * (ar - alpha0);
+        const stallOnset = 14 - 50*(t-0.12) - 20*(m-0.02); // deg
+        const soft = 1 / (1 + Math.exp((Math.abs(a) - stallOnset)/1.2));
+        return clLinear * (0.65 + 0.35*soft);
       });
-      const cd0 = 0.008 + 0.004*(0.3/mach - 1 + 0.0001); // crude Mach sensitivity
-      const k = 0.045; // induced+profile bucket
-      const cds = cls.map(cl => cd0 + k*cl*cl);
+      // Cd0 from skin friction and form factor
+      const Re = Math.max(1e5, reynolds*1e6);
+      const Cf = skinFrictionFlatPlate(Re, mach);
+      const FF = 1 + 2.7*t + 100*t*t; // thickness form factor proxy
+      const Q = 1.0; // interference factor
+      const SwetOverS = 2.1 + 1.2*t; // plausible range 2-3
+      const cd0 = Cf * FF * Q * SwetOverS;
+      const k = 0.04; // induced/proﬁle bucket term
+      let cds = cls.map(cl => cd0 + k*cl*cl);
+      // Wave drag rise near drag divergence (simple ramp)
+      const Mdd = 0.87/Math.cos(0) - t - 0.18; // Korn-like
+      if (mach > Mdd){
+        const dw = 0.003 * (mach - Mdd)/(0.1) ;
+        cds = cds.map(cd => cd + Math.max(0, dw));
+      }
       return { alphas, cls, cds };
     }
 
@@ -708,6 +744,8 @@
       const sweep = Number($('#sweep').value||25);
       const taper = Number($('#taper').value||0.4);
       const twist = Number($('#twist').value||-2);
+      const M = Number($('#wingMach').value||0.78);
+      const CL = Number($('#wingCL').value||0.5);
 
       const canvas = $('#wingCanvas');
       if (!three.renderer) initThree(canvas);
@@ -720,12 +758,23 @@
       three.scene.add(mesh);
       three.wingMesh = mesh;
 
-      // Performance metrics (simulated)
-      const e = Math.max(0.6, 0.95 - 0.002*sweep - 0.03*(1/(AR)));
-      const Cl = 0.5; // assumed cruise
-      const CDi = Cl*Cl / (Math.PI * e * AR);
-      const Cd0 = 0.02 + 0.005*(1-taper) + 0.0005*sweep;
-      const LD = Cl / (CDi + Cd0);
+      // Performance metrics (improved physics-based surrogate)
+      // Oswald efficiency factor (Raymer-like)
+      const e = 1 / (1.035 + 0.38*Math.pow(1 + 0.03*AR + 0.0006*sweep*sweep, 1)) ;
+      // Zero-lift drag Cd0 from Cf and form factor
+      const Re_ref = 12e6; // representative mean aerodynamic chord Re
+      const Cf = skinFrictionFlatPlate(Re_ref, M);
+      const FF = 1 + 0.6/taper + 100*Math.pow((1-0.5*taper),2)*0.0001; // proxy
+      const Q = 1.05; const SwetS = 2.2; // wetted to planform ratio
+      const Cd0 = Math.max(0.012, Cf * FF * Q * SwetS);
+      // Induced drag
+      const CDi = CL*CL / (Math.PI * e * AR);
+      // Wave drag rise
+      const tc = 0.12; const sweepRad = sweep*Math.PI/180;
+      const Mdd = 0.87/Math.cos(sweepRad) - tc - 0.18;
+      const CDw = M > Mdd ? 0.002 * (M - Mdd) / 0.08 : 0;
+      const CD = Cd0 + CDi + Math.max(0, CDw);
+      const LD = CL / CD;
       $('#cdi').textContent = CDi.toFixed(3);
       $('#ld').textContent = LD.toFixed(1);
     }
@@ -824,7 +873,7 @@
       const q = Number($('#plate_q').value||5)*1000; // Pa
       const E = Number($('#E').value||70)*1e9; const nu = Number($('#nu').value||0.33);
       const D = E*Math.pow(t,3)/(12*(1-nu*nu));
-      // Simulate stress field using sinusoidal mode shapes
+      // Simulate stress/deflection using mode shapes, scale with classical coefficients
       const cols = 100, rows = 60;
       const px = Math.floor(w*0.1), py = Math.floor(h*0.1), pw = Math.floor(w*0.8), ph = Math.floor(h*0.8);
       let vmax = -Infinity, vmin = Infinity;
@@ -850,9 +899,15 @@
       }
       ctx.strokeStyle = '#e2e8f0';
       ctx.strokeRect(px, py, pw, ph);
-      const sigmaMax = (vmax * t) / 1e6; // pseudo mapping
+      // Classical central deflection for clamped/simply supported (rectangular plate, uniform load)
+      const bc = $('#plate_bc').value;
+      const kDef = bc==='clamped' ? 0.0138 : 0.00406; // w_max = k*q*a^4/D (a=min(L,W))
+      const a = Math.min(L,W);
+      const wmax = kDef * q * Math.pow(a,4) / (D+1e-9);
+      // Approximate bending stress using sigma ~ 6*q*a^2/(t^2) scaling factor
+      const sigmaMax = (6*q*Math.pow(a,2)/Math.max(t*t,1e-6)) / 1e6;
       $('#sigmaMax').textContent = sigmaMax.toFixed(2);
-      $('#deflMax').textContent = (vmax*0.001).toFixed(2);
+      $('#deflMax').textContent = (wmax*1000).toFixed(2);
       const rho = Number($('#rho').value||2700);
       const mass = rho * L*W*t;
       $('#mass').textContent = mass.toFixed(1);
@@ -894,12 +949,17 @@
       // Draw arc hint
       ctx.strokeStyle = '#e2e8f0';
       ctx.strokeRect(px, py, pw, ph);
-      const sigmaMax = (vmax * 0.001) / 1e6;
+      // Membrane hoop stress for cylindrical shell under pressure ~ p*R/t
+      const tShell = 0.01;
+      const sigmaMax = (p*R/tShell) / 1e6;
       $('#sigmaMax').textContent = sigmaMax.toFixed(2);
-      $('#deflMax').textContent = (vmax*0.0005).toFixed(2);
+      // Deflection scale proxy using shell stiffness ~ Et^3
+      const E = Number($('#E').value||70)*1e9; const nu = Number($('#nu').value||0.33);
+      const D = E*Math.pow(tShell,3)/(12*(1-nu*nu));
+      const wmax = (p*Math.pow(L,4)/(R*D+1e-9))*1e-3;
+      $('#deflMax').textContent = (wmax*1000).toFixed(2);
       const rho = Number($('#rho').value||2700);
-      const t = 0.01;
-      const mass = rho * L*W*t;
+      const mass = rho * L*W*tShell;
       $('#mass').textContent = mass.toFixed(1);
       const fos = 200 / (sigmaMax+1e-3);
       $('#fos').textContent = fos.toFixed(2);
@@ -999,6 +1059,18 @@
     setTimeout(runSizing, 250);
 
     // Module 4: Optimization (GA Simulation)
+    function estimateWingLD(AR, sweep, taper, M, CL){
+      const e = 1 / (1.035 + 0.38*Math.pow(1 + 0.03*AR + 0.0006*sweep*sweep, 1));
+      const Re_ref = 12e6; const Cf = skinFrictionFlatPlate(Re_ref, M);
+      const FF = 1 + 0.6/taper + 100*Math.pow((1-0.5*taper),2)*0.0001; const Q=1.05; const SwetS=2.2;
+      const Cd0 = Math.max(0.012, Cf*FF*Q*SwetS);
+      const CDi = CL*CL/(Math.PI*e*AR);
+      const sweepRad = sweep*Math.PI/180; const tc=0.12; const Mdd = 0.87/Math.cos(sweepRad) - tc - 0.18;
+      const CDw = M > Mdd ? 0.002 * (M - Mdd) / 0.08 : 0;
+      const CD = Cd0 + CDi + Math.max(0,CDw);
+      return CL/CD;
+    }
+
     function runOptimization(){
       const aircraft = $('#optAircraft').value;
       const objective = $('#optObjective').value;
@@ -1012,7 +1084,7 @@
       log.textContent = '';
 
       let metricBase = 1.0;
-      const improvePer = objective.includes('Endurance') ? 0.003 : objective.includes('L/D') ? 0.0025 : 0.002;
+      const improvePer = objective.includes('Endurance') ? 0.0025 : objective.includes('L/D') ? 0.002 : 0.0015;
 
       const tbody = $('#optTable');
       tbody.innerHTML = '';
@@ -1037,7 +1109,12 @@
         optimized.taper = Math.min(Math.max(optimized.taper + (Math.random()-0.5)*0.02, 0.2), 0.7);
         optimized.sweep = Math.min(Math.max(optimized.sweep + (Math.random()-0.5)*1.0, 10), 35);
 
-        metricBase *= 1 + (Math.random()*improvePer);
+        // Physics-based evaluation
+        const M = 0.78; const CL = 0.5;
+        const ldNow = estimateWingLD(optimized.AR, optimized.sweep, optimized.taper, M, CL);
+        const ldPrev = estimateWingLD(initial.AR, initial.sweep, initial.taper, M, CL);
+        const gain = Math.max(0.995, Math.min(1.005, ldNow/ldPrev));
+        metricBase *= gain * (1 + Math.random()*improvePer);
         const delta = (metricBase-1)*100;
         log.textContent += `Iteration ${iteration}/${steps}: Δ(metric)=+${(delta/iteration).toFixed(3)}%\n`;
         log.scrollTop = log.scrollHeight;
