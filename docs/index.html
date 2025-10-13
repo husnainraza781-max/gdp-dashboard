@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OmniAero: ML-Driven Aerospace Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc',
+              400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1',
+              800: '#075985', 900: '#0c4a6e'
+            }
+          },
+          boxShadow: {
+            glow: '0 0 0 2px rgba(14,165,233,0.25), 0 0 25px rgba(14,165,233,0.15)'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    html, body { height: 100%; }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+    /* Smooth scroll for in-page nav */
+    html { scroll-behavior: smooth; }
+    /* Hide number input spinners */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+  <!-- Chart.js for quick plotting -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Three.js for 3D wing visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r155/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <!-- Mobile header -->
+  <header class="lg:hidden sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-slate-800">
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-brand-600 flex items-center justify-center shadow-glow">
+          <span class="font-bold">OA</span>
+        </div>
+        <div>
+          <div class="text-sm text-slate-400">OmniAero</div>
+          <div class="font-semibold">ML-Driven Aerospace Analysis</div>
+        </div>
+      </div>
+      <button id="mobileNavBtn" class="px-3 py-2 rounded border border-slate-700 hover:bg-slate-800">Menu</button>
+    </div>
+    <nav id="mobileNav" class="hidden px-2 pb-3">
+      <button data-target="module-aero" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Aerodynamic Analysis</button>
+      <button data-target="module-struct" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Structural Analysis</button>
+      <button data-target="module-design" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Conceptual Design</button>
+      <button data-target="module-opt" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Optimization Engine</button>
+    </nav>
+  </header>
+
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="hidden lg:flex lg:flex-col lg:w-72 border-r border-slate-800 bg-slate-950/50 sticky top-0 h-screen">
+      <div class="flex items-center gap-3 p-4 border-b border-slate-800">
+        <div class="w-10 h-10 rounded bg-brand-600 flex items-center justify-center shadow-glow">
+          <span class="font-bold">OA</span>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400">OmniAero</div>
+          <div class="font-semibold">ML-Driven Aerospace</div>
+        </div>
+      </div>
+      <nav class="p-3 space-y-2">
+        <button data-target="module-aero" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600">AI-Powered Aerodynamics</button>
+        <button data-target="module-struct" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600">Deep Learning Structures</button>
+        <button data-target="module-design" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600">Conceptual Aircraft Design</button>
+        <button data-target="module-opt" class="nav-btn w-full text-left px-3 py-2 rounded hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-600">Optimization Engine</button>
+      </nav>
+      <div class="mt-auto p-4 text-xs text-slate-400 border-t border-slate-800">
+        <div>Single-file demo • Tailwind + Vanilla JS</div>
+        <div>3D by three.js • Charts by Chart.js</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 lg:p-8 space-y-8">
+      <!-- Module 1: Aerodynamics -->
+      <section id="module-aero" class="module-section">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Module 1: AI-Powered Aerodynamic Analysis</h2>
+          <span class="text-xs text-brand-400">Powered by OmniAero DNN Engine</span>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <!-- 2D Airfoil Inputs -->
+          <div class="xl:col-span-2 bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+            <h3 class="font-semibold mb-3">2D Airfoil</h3>
+            <div class="space-y-3">
+              <label class="block">
+                <span class="text-sm text-slate-300">NACA Code (4/5-digit) or Custom Points</span>
+                <textarea id="airfoilInput" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2 h-20"
+                  placeholder="e.g., NACA 2412 or x,y; x,y; ..."></textarea>
+              </label>
+              <div class="grid grid-cols-3 gap-3">
+                <label class="block">
+                  <span class="text-xs text-slate-300">Angle of Attack α (deg)</span>
+                  <input id="alpha" type="number" value="5" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-slate-300">Mach M</span>
+                  <input id="mach" type="number" step="0.01" value="0.3" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-slate-300">Reynolds Re (×10⁶)</span>
+                  <input id="reynolds" type="number" step="0.1" value="6" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+                </label>
+              </div>
+              <button id="analyze2D" class="w-full mt-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Analyze 2D Airfoil</button>
+            </div>
+          </div>
+
+          <!-- 2D Outputs -->
+          <div class="xl:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-semibold">Cℓ and Cd vs α</h4>
+                <span class="text-xs text-slate-400">Simulated DNN Prediction</span>
+              </div>
+              <canvas id="chartClCd" height="180"></canvas>
+            </div>
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-semibold">Airfoil & Pressure (Cp) Map</h4>
+                <span class="text-xs text-slate-400">Instant Visualization</span>
+              </div>
+              <canvas id="airfoilCanvas" class="w-full h-64 bg-slate-950 rounded"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Wing Sub-Module -->
+        <div class="mt-8 grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div class="xl:col-span-2 bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+            <h3 class="font-semibold mb-3">3D Wing Geometry</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-xs text-slate-300">Aspect Ratio AR</span>
+                <input id="ar" type="number" step="0.1" value="9" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-slate-300">Sweep Λ (deg)</span>
+                <input id="sweep" type="number" step="1" value="25" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-slate-300">Taper λ</span>
+                <input id="taper" type="number" step="0.05" value="0.4" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-slate-300">Twist ϵ (deg)</span>
+                <input id="twist" type="number" step="0.5" value="-2" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2" />
+              </label>
+            </div>
+            <button id="analyze3D" class="w-full mt-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Analyze 3D Wing</button>
+            <div class="mt-4 text-sm grid grid-cols-2 gap-2">
+              <div class="bg-slate-950/60 border border-slate-800 rounded p-2">
+                <div class="text-xs text-slate-400">Cᵢ (Induced Drag)</div>
+                <div id="cdi" class="font-semibold">–</div>
+              </div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded p-2">
+                <div class="text-xs text-slate-400">L/D</div>
+                <div id="ld" class="font-semibold">–</div>
+              </div>
+            </div>
+          </div>
+          <div class="xl:col-span-3 bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-semibold">3D Wing Visualization</h4>
+              <span class="text-xs text-slate-400">Real-time three.js</span>
+            </div>
+            <canvas id="wingCanvas" class="w-full h-80 bg-slate-950 rounded"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Module 2: Structures -->
+      <section id="module-struct" class="module-section hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Module 2: Deep Learning Structural Analysis</h2>
+          <span class="text-xs text-brand-400">Powered by OmniAero DNN Engine</span>
+        </div>
+        <div class="bg-slate-900/50 border border-slate-800 rounded-lg">
+          <!-- Tabs -->
+          <div class="flex flex-wrap gap-2 p-3 border-b border-slate-800">
+            <button data-tab="beam" class="struct-tab px-3 py-1.5 rounded bg-slate-800 text-sm">Beams</button>
+            <button data-tab="plate" class="struct-tab px-3 py-1.5 rounded hover:bg-slate-800 text-sm">Flat Plates</button>
+            <button data-tab="shell" class="struct-tab px-3 py-1.5 rounded hover:bg-slate-800 text-sm">Curved Surfaces</button>
+          </div>
+          <div class="p-4 grid grid-cols-1 xl:grid-cols-5 gap-6">
+            <!-- Common Inputs -->
+            <div class="xl:col-span-2 space-y-3">
+              <h3 class="font-semibold">Material & Loads</h3>
+              <div class="grid grid-cols-3 gap-3">
+                <label class="block">
+                  <span class="text-xs text-slate-300">ρ (kg/m³)</span>
+                  <input id="rho" type="number" value="2700" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/>
+                </label>
+                <label class="block">
+                  <span class="text-xs text-slate-300">E (GPa)</span>
+                  <input id="E" type="number" step="1" value="70" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/>
+                </label>
+                <label class="block">
+                  <span class="text-xs text-slate-300">ν</span>
+                  <input id="nu" type="number" step="0.01" value="0.33" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/>
+                </label>
+              </div>
+
+              <!-- Beam Inputs -->
+              <div id="beamInputs" class="space-y-3">
+                <h4 class="font-medium">Beam Parameters</h4>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block">
+                    <span class="text-xs text-slate-300">Length L (m)</span>
+                    <input id="beamL" type="number" value="3" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/>
+                  </label>
+                  <label class="block">
+                    <span class="text-xs text-slate-300">Cross-section</span>
+                    <select id="beamSection" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2">
+                      <option value="box" selected>Box</option>
+                      <option value="ibeam">I-beam</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="beamDims" class="grid grid-cols-4 gap-3">
+                  <label class="block"><span class="text-xs text-slate-300">b (m)</span>
+                    <input id="beam_b" type="number" step="0.01" value="0.2" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">h (m)</span>
+                    <input id="beam_h" type="number" step="0.01" value="0.3" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">t (m)</span>
+                    <input id="beam_t" type="number" step="0.005" value="0.01" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">q (kN/m)</span>
+                    <input id="beam_q" type="number" step="0.1" value="1.5" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                </div>
+                <label class="block">
+                  <span class="text-xs text-slate-300">Point Load P (kN) at midspan</span>
+                  <input id="beam_P" type="number" step="0.1" value="0" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/>
+                </label>
+                <button id="analyzeBeam" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Run Beam Analysis</button>
+              </div>
+
+              <!-- Plate Inputs -->
+              <div id="plateInputs" class="space-y-3 hidden">
+                <h4 class="font-medium">Flat Plate Parameters</h4>
+                <div class="grid grid-cols-3 gap-3">
+                  <label class="block"><span class="text-xs text-slate-300">L (m)</span>
+                    <input id="plate_L" type="number" value="1.2" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">W (m)</span>
+                    <input id="plate_W" type="number" value="0.8" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">t (m)</span>
+                    <input id="plate_t" type="number" value="0.01" step="0.002" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block"><span class="text-xs text-slate-300">Boundary</span>
+                    <select id="plate_bc" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2">
+                      <option value="clamped">Clamped</option>
+                      <option value="simply">Simply Supported</option>
+                    </select></label>
+                  <label class="block"><span class="text-xs text-slate-300">Uniform q (kPa)</span>
+                    <input id="plate_q" type="number" value="5" step="0.5" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                </div>
+                <button id="analyzePlate" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Run Plate Analysis</button>
+              </div>
+
+              <!-- Shell Inputs -->
+              <div id="shellInputs" class="space-y-3 hidden">
+                <h4 class="font-medium">Curved Surface (Shell) Parameters</h4>
+                <div class="grid grid-cols-3 gap-3">
+                  <label class="block"><span class="text-xs text-slate-300">Radius R (m)</span>
+                    <input id="shell_R" type="number" value="1.0" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">Span L (m)</span>
+                    <input id="shell_L" type="number" value="2.0" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                  <label class="block"><span class="text-xs text-slate-300">Width W (m)</span>
+                    <input id="shell_W" type="number" value="1.0" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="block"><span class="text-xs text-slate-300">Boundary</span>
+                    <select id="shell_bc" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2">
+                      <option value="clamped">Clamped</option>
+                      <option value="simply">Simply Supported</option>
+                    </select></label>
+                  <label class="block"><span class="text-xs text-slate-300">Pressure p (kPa)</span>
+                    <input id="shell_p" type="number" value="8" step="0.5" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                </div>
+                <button id="analyzeShell" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Run Shell Analysis</button>
+              </div>
+            </div>
+
+            <!-- Visualization + Results -->
+            <div class="xl:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-slate-950/60 border border-slate-800 rounded p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="font-semibold">Geometry & Von Mises Map</h4>
+                  <span class="text-xs text-slate-400">Simulated DNN-Accelerated FEA</span>
+                </div>
+                <canvas id="structCanvas" class="w-full h-80 bg-slate-950 rounded"></canvas>
+              </div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded p-3 grid gap-3 content-start">
+                <h4 class="font-semibold">Key Results</h4>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                  <div class="bg-slate-900 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">σmax (MPa)</div><div id="sigmaMax" class="font-semibold">–</div></div>
+                  <div class="bg-slate-900 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">δmax (mm)</div><div id="deflMax" class="font-semibold">–</div></div>
+                  <div class="bg-slate-900 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">Mass (kg)</div><div id="mass" class="font-semibold">–</div></div>
+                  <div class="bg-slate-900 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">Safety Factor</div><div id="fos" class="font-semibold">–</div></div>
+                </div>
+                <div class="text-xs text-brand-400">Powered by OmniAero DNN Engine</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Module 3: Conceptual Design -->
+      <section id="module-design" class="module-section hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Module 3: Conceptual Aircraft Design (Raymer-like)</h2>
+          <span class="text-xs text-brand-400">Powered by OmniAero DNN Engine</span>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div class="xl:col-span-2 bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+            <h3 class="font-semibold mb-3">Mission & Initial Guess</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block"><span class="text-xs text-slate-300">Range R (km)</span>
+                <input id="R" type="number" value="2500" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+              <label class="block"><span class="text-xs text-slate-300">Payload Wₚ (kg)</span>
+                <input id="Wp" type="number" value="4000" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+              <label class="block"><span class="text-xs text-slate-300">Cruise Alt (m)</span>
+                <input id="alt" type="number" value="11000" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+              <label class="block"><span class="text-xs text-slate-300">Mmax</span>
+                <input id="Mmax" type="number" step="0.01" value="0.78" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <label class="block"><span class="text-xs text-slate-300">Initial W₀ (kg)</span>
+                <input id="W0" type="number" value="22000" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+              <label class="block"><span class="text-xs text-slate-300">L/D (cruise)</span>
+                <input id="LDcruise" type="number" step="0.5" value="16" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+            </div>
+            <button id="runSizing" class="w-full mt-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Start Analysis</button>
+          </div>
+          <div class="xl:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+              <h4 class="font-semibold mb-2">Weight Fractions</h4>
+              <div class="text-sm grid grid-cols-2 gap-2">
+                <div class="bg-slate-950/60 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">Wfuel/W₀</div><div id="WfW0" class="font-semibold">–</div></div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">Wempty/W₀</div><div id="WeW0" class="font-semibold">–</div></div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">S (m²)</div><div id="Sref" class="font-semibold">–</div></div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">AR (assumed)</div><div id="ARassumed" class="font-semibold">–</div></div>
+              </div>
+              <div class="mt-3 text-sm grid grid-cols-2 gap-2">
+                <div class="bg-slate-950/60 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">T/W</div><div id="TW" class="font-semibold">–</div></div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded p-2"><div class="text-xs text-slate-400">W/S (Pa)</div><div id="WS" class="font-semibold">–</div></div>
+              </div>
+            </div>
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="font-semibold">Design Space (W/S vs T/W)</h4>
+                <span class="text-xs text-slate-400">Selected Point Marked</span>
+              </div>
+              <canvas id="designChart" class="w-full h-64"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Module 4: Optimization -->
+      <section id="module-opt" class="module-section hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Module 4: Optimization Engine (GA Simulation)</h2>
+          <span class="text-xs text-brand-400">Powered by OmniAero DNN Engine</span>
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div class="xl:col-span-2 bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+            <h3 class="font-semibold mb-3">Setup</h3>
+            <div class="space-y-3">
+              <label class="block"><span class="text-xs text-slate-300">Target Aircraft</span>
+                <select id="optAircraft" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2">
+                  <option>Business Jet</option>
+                  <option>Fighter</option>
+                  <option>UAV</option>
+                </select></label>
+              <label class="block"><span class="text-xs text-slate-300">Objective</span>
+                <select id="optObjective" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2">
+                  <option>Maximize L/D at cruise</option>
+                  <option>Maximize Endurance</option>
+                  <option>Minimize Weight</option>
+                </select></label>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="block"><span class="text-xs text-slate-300">Max Span (m)</span>
+                  <input id="cMaxSpan" type="number" value="30" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+                <label class="block"><span class="text-xs text-slate-300">Min AR</span>
+                  <input id="cMinAR" type="number" step="0.1" value="6" class="mt-1 w-full bg-slate-950 border border-slate-800 rounded p-2"/></label>
+              </div>
+              <button id="runOpt" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-2 rounded shadow-glow">Run Optimization</button>
+            </div>
+          </div>
+          <div class="xl:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+              <h4 class="font-semibold mb-2">Iterations</h4>
+              <div id="optLog" class="h-64 overflow-auto bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono"></div>
+            </div>
+            <div class="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
+              <h4 class="font-semibold mb-2">Parameters</h4>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead class="text-slate-300">
+                    <tr>
+                      <th class="text-left p-2">Parameter</th>
+                      <th class="text-left p-2">Initial</th>
+                      <th class="text-left p-2">Optimized</th>
+                    </tr>
+                  </thead>
+                  <tbody id="optTable" class="divide-y divide-slate-800"></tbody>
+                </table>
+              </div>
+              <div class="mt-3 text-sm bg-slate-950/60 border border-slate-800 rounded p-2">
+                <div class="text-xs text-slate-400">Result</div>
+                <div id="optResult" class="font-semibold">–</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Utilities
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    // Navigation logic
+    function activateSection(id) {
+      $$('.module-section').forEach(s => s.classList.add('hidden'));
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('hidden');
+      $$('.nav-btn').forEach(btn => btn.classList.remove('bg-slate-800','ring-2','ring-brand-600'));
+      $$('.nav-btn').forEach(btn => {
+        if (btn.getAttribute('data-target') === id) btn.classList.add('bg-slate-800','ring-2','ring-brand-600');
+      });
+      // close mobile nav
+      const mnav = $('#mobileNav');
+      if (mnav) mnav.classList.add('hidden');
+    }
+
+    $('#mobileNavBtn')?.addEventListener('click', () => {
+      $('#mobileNav')?.classList.toggle('hidden');
+    });
+
+    $$('#mobileNav button, .nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => activateSection(btn.getAttribute('data-target')));
+    });
+
+    // Default section
+    activateSection('module-aero');
+
+    // Module 1: 2D Airfoil + charts
+    let clCdChart;
+
+    function parseAirfoilInput(text) {
+      const trimmed = text.trim().toUpperCase();
+      if (!trimmed) return { type: 'naca4', code: '2412' };
+      if (trimmed.startsWith('NACA')) {
+        const code = trimmed.replace(/\s+/g,'').replace('NACA','');
+        if (/^\d{4}$/.test(code)) return { type: 'naca4', code };
+        if (/^\d{5}$/.test(code)) return { type: 'naca5approx', code };
+      }
+      // Try custom points: format "x,y; x,y; ..."
+      const pts = trimmed.split(/[;\n]+/).map(p=>p.trim()).filter(Boolean).map(p=>p.split(/[,\s]+/).map(Number)).filter(a=>a.length===2 && a.every(n=>!isNaN(n)));
+      if (pts.length >= 8) return { type: 'custom', points: pts };
+      return { type: 'naca4', code: '2412' };
+    }
+
+    function naca4Coordinates(code, n=100) {
+      const m = Number(code[0]) / 100; // max camber
+      const p = Number(code[1]) / 10;  // location of max camber
+      const t = Number(code.slice(2)) / 100; // thickness
+      const x = Array.from({length:n}, (_,i)=> i/(n-1));
+      const yt = x.map(xi => 5*t*(0.2969*Math.sqrt(xi) - 0.1260*xi - 0.3516*xi*xi + 0.2843*xi*xi*xi - 0.1015*xi*xi*xi*xi));
+      const yc = x.map(xi => xi < p ? (m/(p*p))*(2*p*xi - xi*xi) : (m/((1-p)*(1-p)))*((1-2*p)+2*p*xi - xi*xi));
+      const dyc = x.map(xi => xi < p ? (2*m/(p*p))*(p - xi) : (2*m/((1-p)*(1-p)))*(p - xi));
+      const theta = dyc.map(d => Math.atan(d));
+      const xu = x.map((xi,i) => xi - yt[i]*Math.sin(theta[i]));
+      const yu = yc.map((yci,i) => yci + yt[i]*Math.cos(theta[i]));
+      const xl = x.map((xi,i) => xi + yt[i]*Math.sin(theta[i]));
+      const yl = yc.map((yci,i) => yci - yt[i]*Math.cos(theta[i]));
+      // Assemble upper (front to back) then lower (back to front)
+      const coords = [];
+      for (let i = 0; i < n; i++) coords.push([xu[i], yu[i]]);
+      for (let i = n-1; i >=0; i--) coords.push([xl[i], yl[i]]);
+      return coords;
+    }
+
+    function naca5Approx(code) {
+      // Approximate 5-digit by translating to a plausible 4-digit surrogate
+      const t = Number(code.slice(3))/100;
+      const m = 0.03; // approximate
+      const p = 0.15; // approximate
+      const pseudo = `${Math.round(m*100)}${Math.round(p*10)}${String(Math.round(t*100)).padStart(2,'0')}`;
+      return naca4Coordinates(pseudo);
+    }
+
+    function drawAirfoilAndCp(canvas, coords, alphaDeg, mach) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+
+      // Transform to fit
+      const padding = 20;
+      const scale = Math.min((w-2*padding), (h-2*padding));
+      const offsetX = padding + (w-2*padding - scale)/2;
+      const offsetY = padding + (h-2*padding)/2;
+
+      function toXY(pt){
+        const [x,y] = pt;
+        const xr = x;
+        const yr = y;
+        return [offsetX + xr*scale, offsetY - yr*scale];
+      }
+
+      // Draw simple background flow Cp contours (fake using sine waves influenced by alpha & Mach)
+      for (let i=0;i<30;i++) {
+        const y = i/(30-1);
+        const cp = Math.sin( (y*6 + alphaDeg*Math.PI/180)*2 ) * (1+mach) * 0.5;
+        const hue = 220 - cp*40; // blue to cyan
+        ctx.fillStyle = `hsl(${hue},70%,${30 + cp*10}%)`;
+        ctx.fillRect(0, Math.floor(y*h), w, Math.ceil(h/30));
+      }
+
+      // Airfoil path
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.fillStyle = 'rgba(14,165,233,0.15)';
+      ctx.beginPath();
+      coords.forEach((pt,i)=>{
+        const [X,Y] = toXY(pt);
+        if (i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Flow arrows
+      const aoa = alphaDeg*Math.PI/180;
+      const ux = Math.cos(aoa), uy = -Math.sin(aoa);
+      ctx.strokeStyle = 'rgba(56,189,248,0.8)';
+      ctx.lineWidth = 1.5;
+      for (let x=padding; x<w-padding; x+=Math.max(30, w/12)){
+        const y = offsetY + (Math.random()-0.5)*h*0.15;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + ux*40, y + uy*40);
+        ctx.stroke();
+      }
+    }
+
+    function simulateAero(alphaDeg, mach, reynolds) {
+      const alphas = Array.from({length:21}, (_,i)=> -5 + i*1);
+      const alphaRad = alphas.map(a=> a*Math.PI/180);
+      // Thin airfoil linear region with compressibility correction (Prandtl-Glauert)
+      const beta = Math.sqrt(Math.max(1 - mach*mach, 0.1));
+      const clSlope = 2*Math.PI / beta;
+      const alpha0 = -2*Math.PI/180; // zero-lift angle
+      const cls = alphas.map(a => {
+        // mild stall effect
+        const cl = clSlope * ((a*Math.PI/180) - alpha0);
+        const stall = 1 / (1 + Math.exp((Math.abs(a)-14)/1.5));
+        return cl * (0.7 + 0.3*stall);
+      });
+      const cd0 = 0.008 + 0.004*(0.3/mach - 1 + 0.0001); // crude Mach sensitivity
+      const k = 0.045; // induced+profile bucket
+      const cds = cls.map(cl => cd0 + k*cl*cl);
+      return { alphas, cls, cds };
+    }
+
+    function renderClCdChart(data) {
+      const ctx = document.getElementById('chartClCd').getContext('2d');
+      if (clCdChart) clCdChart.destroy();
+      clCdChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.alphas,
+          datasets: [
+            { label: 'Cℓ', data: data.cls, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.2)', yAxisID: 'y1' },
+            { label: 'Cd', data: data.cds, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.2)', yAxisID: 'y2' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'α (deg)', color: '#94a3b8' }, ticks: { color:'#94a3b8' }, grid: { color:'#0f172a' } },
+            y1: { type: 'linear', position: 'left', ticks: { color:'#94a3b8' }, grid: { color:'#0f172a' } },
+            y2: { type: 'linear', position: 'right', ticks: { color:'#94a3b8' }, grid: { drawOnChartArea:false } }
+          },
+          plugins: { legend: { labels: { color: '#cbd5e1' } } }
+        }
+      });
+    }
+
+    $('#analyze2D').addEventListener('click', () => {
+      const parsed = parseAirfoilInput($('#airfoilInput').value);
+      let coords;
+      if (parsed.type==='naca4') coords = naca4Coordinates(parsed.code);
+      else if (parsed.type==='naca5approx') coords = naca5Approx(parsed.code);
+      else coords = parsed.points;
+      const a = Number($('#alpha').value||0);
+      const M = Number($('#mach').value||0.3);
+      const Re = Number($('#reynolds').value||6);
+      drawAirfoilAndCp($('#airfoilCanvas'), coords, a, M);
+      const sim = simulateAero(a, M, Re);
+      renderClCdChart(sim);
+    });
+
+    // Trigger initial 2D render
+    $('#analyze2D').click();
+
+    // Module 1: 3D Wing using three.js
+    let three = { scene:null, camera:null, renderer:null, controls:null, wingMesh:null };
+
+    function initThree(canvas) {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b1220);
+      const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth/canvas.clientHeight, 0.1, 1000);
+      camera.position.set(8,6,12);
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+
+      const controls = new THREE.OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+
+      const light1 = new THREE.DirectionalLight(0xffffff, 1.0); light1.position.set(10,10,10); scene.add(light1);
+      const light2 = new THREE.AmbientLight(0x406080, 0.6); scene.add(light2);
+
+      three = { scene, camera, renderer, controls, wingMesh: null };
+      animateThree();
+    }
+
+    function animateThree(){
+      if (!three.renderer) return;
+      requestAnimationFrame(animateThree);
+      three.controls?.update();
+      three.renderer.render(three.scene, three.camera);
+    }
+
+    function buildWingGeometry(AR, sweepDeg, taper, twistDeg){
+      // Assume reference area S=30 m^2 for visualization scaling
+      const S = 30;
+      const b = Math.sqrt(AR * S);
+      const cr = 2*S / ((1+taper)*b);
+      const ct = taper * cr;
+      const halfSpan = b/2;
+      const sweep = sweepDeg * Math.PI/180;
+      const twist = twistDeg * Math.PI/180;
+
+      const geom = new THREE.BufferGeometry();
+      // Simple flat plate trapezoid wing (both halves)
+      // Define 8 vertices: root TL/TR, tip TL/TR for both left and right halves
+      const verts = [];
+      const zRoot = 0;
+      const zTip = halfSpan;
+      const xShift = Math.tan(sweep) * zTip;
+
+      function pushQuad(sign){
+        const z0 = 0; const z1 = sign*zTip;
+        const x0 = 0; const x1 = xShift*sign;
+        const y0 = 0; // centerline
+        const halfThick = 0.02*cr; // visual thickness
+        // Root chord points (leading to trailing)
+        const rLE = new THREE.Vector3(x0, y0 + halfThick, z0);
+        const rTE = new THREE.Vector3(x0+cr, y0 - halfThick, z0);
+        // Tip chord with twist
+        const tLE = new THREE.Vector3(x1, y0 + halfThick + Math.tan(twist)*(ct*0.5), z1);
+        const tTE = new THREE.Vector3(x1+ct, y0 - halfThick + Math.tan(twist)*(-ct*0.5), z1);
+        // Two triangles per quad
+        verts.push(...rLE.toArray(), ...tLE.toArray(), ...tTE.toArray());
+        verts.push(...rLE.toArray(), ...tTE.toArray(), ...rTE.toArray());
+      }
+
+      pushQuad(+1);
+      pushQuad(-1);
+
+      const vertices = new Float32Array(verts);
+      geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+      geom.computeVertexNormals();
+      return { geometry: geom, cr, ct, b };
+    }
+
+    function analyzeWing(){
+      const AR = Number($('#ar').value||9);
+      const sweep = Number($('#sweep').value||25);
+      const taper = Number($('#taper').value||0.4);
+      const twist = Number($('#twist').value||-2);
+
+      const canvas = $('#wingCanvas');
+      if (!three.renderer) initThree(canvas);
+
+      if (three.wingMesh) { three.scene.remove(three.wingMesh); three.wingMesh.geometry.dispose(); }
+      const { geometry, b } = buildWingGeometry(AR, sweep, taper, twist);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness:0.2, roughness:0.4, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geometry, mat);
+      mesh.position.set(-2, 0, 0);
+      three.scene.add(mesh);
+      three.wingMesh = mesh;
+
+      // Performance metrics (simulated)
+      const e = Math.max(0.6, 0.95 - 0.002*sweep - 0.03*(1/(AR)));
+      const Cl = 0.5; // assumed cruise
+      const CDi = Cl*Cl / (Math.PI * e * AR);
+      const Cd0 = 0.02 + 0.005*(1-taper) + 0.0005*sweep;
+      const LD = Cl / (CDi + Cd0);
+      $('#cdi').textContent = CDi.toFixed(3);
+      $('#ld').textContent = LD.toFixed(1);
+    }
+
+    $('#analyze3D').addEventListener('click', analyzeWing);
+    // Initial 3D render
+    setTimeout(analyzeWing, 200);
+
+    // Resize handler for canvases
+    function resizeCanvases(){
+      // Resize three.js renderer
+      const c = $('#wingCanvas');
+      if (three.renderer && c){
+        three.renderer.setSize(c.clientWidth, c.clientHeight, false);
+        three.camera.aspect = c.clientWidth/c.clientHeight;
+        three.camera.updateProjectionMatrix();
+      }
+      // Redraw airfoil
+      $('#analyze2D').click();
+      // Redraw struct
+      drawStructCurrentMode();
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // Module 2: Structures
+    let currentStructTab = 'beam';
+    $$('.struct-tab').forEach(btn => btn.addEventListener('click', () => {
+      $$('.struct-tab').forEach(b=>b.classList.remove('bg-slate-800'));
+      btn.classList.add('bg-slate-800');
+      currentStructTab = btn.getAttribute('data-tab');
+      $('#beamInputs').classList.toggle('hidden', currentStructTab!=='beam');
+      $('#plateInputs').classList.toggle('hidden', currentStructTab!=='plate');
+      $('#shellInputs').classList.toggle('hidden', currentStructTab!=='shell');
+      drawStructCurrentMode();
+    }));
+
+    function colorForValue(v, vmin, vmax){
+      const t = Math.max(0, Math.min(1, (v - vmin)/(vmax - vmin + 1e-9)));
+      // Blue -> Cyan -> Yellow -> Red
+      const r = Math.floor(255 * Math.max(0, (t-0.5)*2));
+      const g = Math.floor(255 * (t<0.5 ? t*2 : 1));
+      const b = Math.floor(255 * (t<0.5 ? (1 - t*2) : (1 - (t-0.5)*2)));
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function drawBeamCanvas(){
+      const canvas = $('#structCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+      // Beam rectangle
+      const bw = Math.floor(w*0.8), bh = Math.floor(h*0.12);
+      const x0 = Math.floor(w*0.1), y0 = Math.floor(h*0.45);
+      // Simulated stress distribution along length under combined q and P
+      const qkN = Number($('#beam_q').value||0); const PkN = Number($('#beam_P').value||0);
+      const L = Number($('#beamL').value||1);
+      const E = Number($('#E').value||70)*1e9;
+      const b = Number($('#beam_b').value||0.2), t = Number($('#beam_t').value||0.01), he = Number($('#beam_h').value||0.3);
+      // Second moment (approx hollow box)
+      const I = (b*he*he*he - (b-2*t)*(he-2*t)*(he-2*t)*(he-2*t))/12;
+      const q = qkN*1000; const P = PkN*1000;
+      // Max deflection (simulated superposition)
+      const wq = 5*q*Math.pow(L,4)/(384*E*I);
+      const wP = P*Math.pow(L,3)/(48*E*I);
+      const wmax = (wq + wP) * 1000; // mm
+      const sigmaMax = (P*L/4 + q*L*L/8) * (he/2) / I / 1e6; // MPa approx
+
+      // Color map along length
+      for (let i=0;i<bw;i++){
+        const x = i/bw;
+        const v = (PkN>0? Math.sin(Math.PI*x):0) + (qkN>0? (1 - Math.pow(2*x-1,2)) : 0);
+        const c = colorForValue(v, 0, 1.5);
+        ctx.fillStyle = c;
+        ctx.fillRect(x0+i, y0, 1, bh);
+      }
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.strokeRect(x0, y0, bw, bh);
+
+      $('#sigmaMax').textContent = sigmaMax.toFixed(2);
+      $('#deflMax').textContent = wmax.toFixed(2);
+      const rho = Number($('#rho').value||2700);
+      const mass = rho * (b*he*L - (b-2*t)*(he-2*t)*L) ;
+      $('#mass').textContent = mass.toFixed(1);
+      const fos = (250 / (sigmaMax+1e-3));
+      $('#fos').textContent = fos.toFixed(2);
+    }
+
+    function drawPlateCanvas(){
+      const canvas = $('#structCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+      const L = Number($('#plate_L').value||1), W = Number($('#plate_W').value||1), t = Number($('#plate_t').value||0.01);
+      const q = Number($('#plate_q').value||5)*1000; // Pa
+      const E = Number($('#E').value||70)*1e9; const nu = Number($('#nu').value||0.33);
+      const D = E*Math.pow(t,3)/(12*(1-nu*nu));
+      // Simulate stress field using sinusoidal mode shapes
+      const cols = 100, rows = 60;
+      const px = Math.floor(w*0.1), py = Math.floor(h*0.1), pw = Math.floor(w*0.8), ph = Math.floor(h*0.8);
+      let vmax = -Infinity, vmin = Infinity;
+      const field = [];
+      for (let j=0;j<rows;j++){
+        const y = j/(rows-1);
+        const row = [];
+        for (let i=0;i<cols;i++){
+          const x = i/(cols-1);
+          const val = q/(D+1e-9) * (Math.sin(Math.PI*x)*Math.sin(Math.PI*y));
+          row.push(val);
+          vmax = Math.max(vmax, val); vmin = Math.min(vmin, val);
+        }
+        field.push(row);
+      }
+      for (let j=0;j<rows;j++){
+        for (let i=0;i<cols;i++){
+          ctx.fillStyle = colorForValue(field[j][i], vmin, vmax);
+          const cx = px + Math.floor((i/cols)*pw);
+          const cy = py + Math.floor((j/rows)*ph);
+          ctx.fillRect(cx, cy, Math.ceil(pw/cols), Math.ceil(ph/rows));
+        }
+      }
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.strokeRect(px, py, pw, ph);
+      const sigmaMax = (vmax * t) / 1e6; // pseudo mapping
+      $('#sigmaMax').textContent = sigmaMax.toFixed(2);
+      $('#deflMax').textContent = (vmax*0.001).toFixed(2);
+      const rho = Number($('#rho').value||2700);
+      const mass = rho * L*W*t;
+      $('#mass').textContent = mass.toFixed(1);
+      const fos = 250 / (sigmaMax+1e-3);
+      $('#fos').textContent = fos.toFixed(2);
+    }
+
+    function drawShellCanvas(){
+      const canvas = $('#structCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+      const R = Number($('#shell_R').value||1), L = Number($('#shell_L').value||2), W = Number($('#shell_W').value||1);
+      const p = Number($('#shell_p').value||8)*1000;
+      const cols = 120, rows = 80;
+      let vmax = -Infinity, vmin = Infinity;
+      const px = Math.floor(w*0.1), py = Math.floor(h*0.1), pw = Math.floor(w*0.8), ph = Math.floor(h*0.8);
+      for (let j=0;j<rows;j++){
+        const y = j/(rows-1);
+        for (let i=0;i<cols;i++){
+          const x = i/(cols-1);
+          const curvature = 1/R;
+          const val = p * (Math.sin(Math.PI*x)*Math.sin(Math.PI*y)) * (1 + 0.5*curvature);
+          vmax = Math.max(vmax, val); vmin = Math.min(vmin, val);
+        }
+      }
+      for (let j=0;j<rows;j++){
+        for (let i=0;i<cols;i++){
+          const x = i/(cols-1), y = j/(rows-1);
+          const curvature = 1/R;
+          const val = p * (Math.sin(Math.PI*x)*Math.sin(Math.PI*y)) * (1 + 0.5*curvature);
+          const color = colorForValue(val, vmin, vmax);
+          const cx = px + Math.floor((i/cols)*pw);
+          const cy = py + Math.floor((j/rows)*ph);
+          ctx.fillStyle = color; ctx.fillRect(cx, cy, Math.ceil(pw/cols), Math.ceil(ph/rows));
+        }
+      }
+      // Draw arc hint
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.strokeRect(px, py, pw, ph);
+      const sigmaMax = (vmax * 0.001) / 1e6;
+      $('#sigmaMax').textContent = sigmaMax.toFixed(2);
+      $('#deflMax').textContent = (vmax*0.0005).toFixed(2);
+      const rho = Number($('#rho').value||2700);
+      const t = 0.01;
+      const mass = rho * L*W*t;
+      $('#mass').textContent = mass.toFixed(1);
+      const fos = 200 / (sigmaMax+1e-3);
+      $('#fos').textContent = fos.toFixed(2);
+    }
+
+    function drawStructCurrentMode(){
+      if (currentStructTab==='beam') drawBeamCanvas();
+      if (currentStructTab==='plate') drawPlateCanvas();
+      if (currentStructTab==='shell') drawShellCanvas();
+    }
+
+    $('#analyzeBeam').addEventListener('click', drawBeamCanvas);
+    $('#analyzePlate').addEventListener('click', drawPlateCanvas);
+    $('#analyzeShell').addEventListener('click', drawShellCanvas);
+    // initial
+    setTimeout(drawStructCurrentMode, 150);
+
+    // Module 3: Conceptual Design (Raymer-like simulation)
+    let designChart;
+    function isaDensity(alt){
+      // Simple ISA up to tropopause
+      const T0=288.15, p0=101325, g=9.80665, L=0.0065, R=287.05;
+      const T = T0 - L*alt;
+      const p = p0 * Math.pow(T/T0, g/(R*L));
+      return p/(R*T);
+    }
+
+    function runSizing(){
+      const Rkm = Number($('#R').value||2500);
+      const Wp = Number($('#Wp').value||4000);
+      const alt = Number($('#alt').value||11000);
+      const Mmax = Number($('#Mmax').value||0.78);
+      const W0 = Number($('#W0').value||22000);
+      const LD = Number($('#LDcruise').value||16);
+
+      const a = 295; // m/s approx at cruise alt
+      const V = Mmax * a * 0.9; // representative cruise speed
+      const cTSFC = 0.6; // 1/hr
+      const c = cTSFC/3600; // 1/s
+      const R = Rkm*1000;
+      const WiWf = Math.exp(R * c / (V * LD));
+      const WfW0 = 1 - 1/WiWf + 0.04; // add reserves
+
+      // Raymer empty weight fraction approx We/W0 = A * W0^B (kg->lb neutralized)
+      const A = 0.97, B = -0.06;
+      const WeW0 = Math.min(0.8, Math.max(0.35, A*Math.pow(W0, B)));
+
+      const rho = isaDensity(alt);
+      const q = 0.5*rho*V*V;
+      const CLdesign = 0.55;
+      const S = W0*9.81/(q*CLdesign);
+      const ARassumed = 9.5;
+
+      // Thrust-to-weight simple proxy
+      const CD0 = 0.02; const k = 1/(Math.PI*0.85*ARassumed);
+      const TW = CD0/(9.81/q) + k*(W0*9.81/(q*S));
+      const WS = (W0*9.81)/S;
+
+      $('#WfW0').textContent = WfW0.toFixed(3);
+      $('#WeW0').textContent = WeW0.toFixed(3);
+      $('#Sref').textContent = S.toFixed(1);
+      $('#ARassumed').textContent = ARassumed.toFixed(1);
+      $('#TW').textContent = TW.toFixed(3);
+      $('#WS').textContent = WS.toFixed(0);
+
+      // Design space chart
+      const ctx = document.getElementById('designChart').getContext('2d');
+      if (designChart) designChart.destroy();
+      const wsVals = Array.from({length:20}, (_,i)=> 2000 + i*1500);
+      const stallLine = wsVals.map(ws => ({x: ws, y: (ws/(q*1.6*9.81))})); // CLmax=1.6
+      const climbLine = wsVals.map(ws => ({x: ws, y: 0.2 + 0.00001*ws}));
+      const cruiseLine = wsVals.map(ws => ({x: ws, y: 0.15 + 0.000008*ws}));
+      const designPt = { x: WS, y: TW };
+
+      designChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            { label: 'Stall', data: stallLine, showLine:true, borderColor:'#f87171', pointRadius:0 },
+            { label: 'Climb', data: climbLine, showLine:true, borderColor:'#fbbf24', pointRadius:0 },
+            { label: 'Cruise', data: cruiseLine, showLine:true, borderColor:'#34d399', pointRadius:0 },
+            { label: 'Design', data: [designPt], pointRadius:5, backgroundColor:'#38bdf8' }
+          ]
+        },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ labels:{ color:'#cbd5e1' } } },
+          scales:{
+            x: { title:{ display:true, text:'W/S (N/m²)', color:'#94a3b8' }, ticks:{ color:'#94a3b8' }, grid:{ color:'#0f172a' } },
+            y: { title:{ display:true, text:'T/W', color:'#94a3b8' }, ticks:{ color:'#94a3b8' }, grid:{ color:'#0f172a' } }
+          }
+        }
+      });
+    }
+
+    $('#runSizing').addEventListener('click', runSizing);
+    setTimeout(runSizing, 250);
+
+    // Module 4: Optimization (GA Simulation)
+    function runOptimization(){
+      const aircraft = $('#optAircraft').value;
+      const objective = $('#optObjective').value;
+      const maxSpan = Number($('#cMaxSpan').value||30);
+      const minAR = Number($('#cMinAR').value||6);
+
+      const initial = { AR: 8.5, taper: 0.45, sweep: 22 };
+      const optimized = { ...initial };
+      const steps = 60;
+      const log = $('#optLog');
+      log.textContent = '';
+
+      let metricBase = 1.0;
+      const improvePer = objective.includes('Endurance') ? 0.003 : objective.includes('L/D') ? 0.0025 : 0.002;
+
+      const tbody = $('#optTable');
+      tbody.innerHTML = '';
+      const rows = {
+        AR: document.createElement('tr'), taper: document.createElement('tr'), sweep: document.createElement('tr')
+      };
+      function mkRow(name, initVal, optVal){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="p-2">${name}</td><td class="p-2 text-slate-300">${initVal}</td><td class="p-2 font-semibold">${optVal}</td>`;
+        return tr;
+      }
+      rows.AR = mkRow('Aspect Ratio', initial.AR.toFixed(2), '—');
+      rows.taper = mkRow('Taper Ratio', initial.taper.toFixed(2), '—');
+      rows.sweep = mkRow('Sweep Angle (deg)', initial.sweep.toFixed(1), '—');
+      tbody.append(rows.AR, rows.taper, rows.sweep);
+
+      let iteration = 0;
+      function step(){
+        iteration++;
+        // Random small mutations within constraints
+        optimized.AR = Math.min(Math.max(optimized.AR + (Math.random()-0.5)*0.3, minAR), Math.max(minAR, maxSpan/3));
+        optimized.taper = Math.min(Math.max(optimized.taper + (Math.random()-0.5)*0.02, 0.2), 0.7);
+        optimized.sweep = Math.min(Math.max(optimized.sweep + (Math.random()-0.5)*1.0, 10), 35);
+
+        metricBase *= 1 + (Math.random()*improvePer);
+        const delta = (metricBase-1)*100;
+        log.textContent += `Iteration ${iteration}/${steps}: Δ(metric)=+${(delta/iteration).toFixed(3)}%\n`;
+        log.scrollTop = log.scrollHeight;
+
+        rows.AR.children[2].textContent = optimized.AR.toFixed(2);
+        rows.taper.children[2].textContent = optimized.taper.toFixed(2);
+        rows.sweep.children[2].textContent = optimized.sweep.toFixed(1);
+
+        if (iteration < steps) setTimeout(step, 40);
+        else {
+          const label = objective.includes('Weight') ? 'Weight Reduced' : objective.includes('Endurance') ? 'Endurance Increased' : 'L/D Increased';
+          $('#optResult').textContent = `${label} by ${delta.toFixed(1)}%`;
+        }
+      }
+      step();
+    }
+
+    $('#runOpt').addEventListener('click', runOptimization);
+
+  </script>
+</body>
+</html>
